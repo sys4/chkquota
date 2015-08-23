@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>chkquota</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp49302352"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>chkquota — RFC 1870 Quota Check Policy Service</p></div><div class="refsynopsisdiv"><a id="_synopsis"></a><h2>Synopsis</h2><p><span class="strong"><strong>chkquota</strong></span> <span class="emphasis"><em>-h</em></span></p><p><span class="strong"><strong>chkquota</strong></span> [<span class="emphasis"><em>-u</em></span>] [<span class="emphasis"><em>-g</em></span>] [<span class="emphasis"><em>-4 192.168.2.1</em></span>] [<span class="emphasis"><em>-6 ::1</em></span>] [<span class="emphasis"><em>-p 12345</em></span>] [<span class="emphasis"><em>-n client.example.com</em></span>] [<span class="emphasis"><em>-r 587</em></span>] [<span class="emphasis"><em>-t</em></span>] [<span class="emphasis"><em>-S</em></span>] [<span class="emphasis"><em>-l</em></span>] [<span class="emphasis"><em>--test</em></span>] [<span class="emphasis"><em>-d</em></span>] <span class="emphasis"><em>-P /path/to/pid</em></span> <span class="emphasis"><em>-s remoteserver</em></span></p></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>chkquota is a RFC 1870 quota check policy service. Contacted by a Postfix check_policy_service client it will contact a remote SMTP or LMTP server. It will specify the recipient and the current messages size to find out if the server would accept the message for that particular recipient. Depending on the outcome it will tell the check_policy_service client to accept or reject the message.</p></div><div class="refsect1"><a id="_options"></a><h2>OPTIONS</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-h, --help</strong></span>
+</span></dt><dd>
+    Prints out a list of all options.
+</dd><dt><span class="term">
+<span class="strong"><strong>-u, --user</strong></span> <span class="emphasis"><em>user</em></span> (default: none)
+</span></dt><dd>
+    Specifies the user chkquota should run as. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-g, --group</strong></span> <span class="emphasis"><em>group</em></span> (default: none)
+</span></dt><dd>
+    Specifies the group chkquota should run as. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-4, --bind4</strong></span> (default: <span class="emphasis"><em>127.0.0.1</em></span>)
+</span></dt><dd>
+    Specifies the IPv4 INET socket chkquota should bind to.
+</dd><dt><span class="term">
+<span class="strong"><strong>-6, --bind6</strong></span> (default: none)
+</span></dt><dd>
+    Specifies the IPv6 INET socket chkquota should bind to. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-p, --port</strong></span> (default: <span class="emphasis"><em>12111</em></span>)
+</span></dt><dd>
+    Specifies the INET port chkquota should bind to.
+</dd><dt><span class="term">
+<span class="strong"><strong>-P, --pid</strong></span> <span class="emphasis"><em>/run/chkquota.pid</em></span> (default: none)
+</span></dt><dd>
+    Specifies the path where chkquota should note its PID. This setting is mandatory.
+</dd><dt><span class="term">
+<span class="strong"><strong>-n, --helohostname</strong></span> <span class="emphasis"><em>hostname</em></span> (default: <span class="emphasis"><em>system hostname</em></span>)
+</span></dt><dd>
+    Specifies the hostname chkquota should use as HELO name when it connects to a remote SMTP or LMTP server. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-s, --server</strong></span> <span class="emphasis"><em>address</em></span> (default: none)
+</span></dt><dd>
+    Specifies the remote address, either IP address or hostname, chkquota should connect to. This setting is mandatory.
+</dd><dt><span class="term">
+<span class="strong"><strong>-r, --remoteport</strong></span> (default: <span class="emphasis"><em>25</em></span>)
+</span></dt><dd>
+    Specifies the remote port chkquota should connect to. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-t, --tls</strong></span> (default: disabled)
+</span></dt><dd>
+    Specifies if chkquota should use STARTTLS when it connects to the remote SMTP or LMTP server. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-S, --ssl</strong></span> (default: disabled)
+</span></dt><dd>
+    Specifies if chkquota should use SSL when it connects to the remote SMTP or LMTP server. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-l, --lmtp</strong></span> (default: disabled)
+</span></dt><dd>
+    Specifies if chkquota should use LMTP instead of SMTP when it connects to the remote server. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>--test</strong></span> (default: disabled)
+</span></dt><dd>
+    If specified chkqouta will test each recipient, but let all messages pass regardless of the mailbox quota state. This setting is optional.
+</dd><dt><span class="term">
+<span class="strong"><strong>-d, --debug</strong></span> (default: disabled)
+</span></dt><dd>
+    If specified chkquota will not run in background. It will stay in foreground. Useful for debugging. This setting is optional.
+</dd></dl></div></div><div class="refsect1"><a id="_authors"></a><h2>AUTHORS</h2><p>Christian Roessner &lt;<a class="ulink" href="mailto:c@roessner.co" target="_top">c@roessner.co</a>&gt; wrote the program.</p><p>Patrick Ben Koetter &lt;<a class="ulink" href="mailto:p@sys4.de" target="_top">p@sys4.de</a>&gt; wrote this man page.</p></div><div class="refsect1"><a id="_copying"></a><h2>COPYING</h2><p>Copyright (C) 2015 sys4 AG. Free use of this software is granted under the terms of the GNU General Public License (GPL).</p></div></div></body></html>

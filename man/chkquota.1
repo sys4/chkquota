@@ -1,0 +1,123 @@
+'\" t
+.\"     Title: chkquota
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 08/23/2015
+.\"    Manual: chkquota Manual
+.\"    Source: chkquota 0.1
+.\"  Language: English
+.\"
+.TH "CHKQUOTA" "1" "08/23/2015" "chkquota 0\&.1" "chkquota Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+chkquota \- RFC 1870 Quota Check Policy Service
+.SH "SYNOPSIS"
+.sp
+\fBchkquota\fR \fI\-h\fR
+.sp
+\fBchkquota\fR [\fI\-u\fR] [\fI\-g\fR] [\fI\-4 192\&.168\&.2\&.1\fR] [\fI\-6 ::1\fR] [\fI\-p 12345\fR] [\fI\-n client\&.example\&.com\fR] [\fI\-r 587\fR] [\fI\-t\fR] [\fI\-S\fR] [\fI\-l\fR] [\fI\-\-test\fR] [\fI\-d\fR] \fI\-P /path/to/pid\fR \fI\-s remoteserver\fR
+.SH "DESCRIPTION"
+.sp
+chkquota is a RFC 1870 quota check policy service\&. Contacted by a Postfix check_policy_service client it will contact a remote SMTP or LMTP server\&. It will specify the recipient and the current messages size to find out if the server would accept the message for that particular recipient\&. Depending on the outcome it will tell the check_policy_service client to accept or reject the message\&.
+.SH "OPTIONS"
+.PP
+\fB\-h, \-\-help\fR
+.RS 4
+Prints out a list of all options\&.
+.RE
+.PP
+\fB\-u, \-\-user\fR \fIuser\fR (default: none)
+.RS 4
+Specifies the user chkquota should run as\&. This setting is optional\&.
+.RE
+.PP
+\fB\-g, \-\-group\fR \fIgroup\fR (default: none)
+.RS 4
+Specifies the group chkquota should run as\&. This setting is optional\&.
+.RE
+.PP
+\fB\-4, \-\-bind4\fR (default: \fI127\&.0\&.0\&.1\fR)
+.RS 4
+Specifies the IPv4 INET socket chkquota should bind to\&.
+.RE
+.PP
+\fB\-6, \-\-bind6\fR (default: none)
+.RS 4
+Specifies the IPv6 INET socket chkquota should bind to\&. This setting is optional\&.
+.RE
+.PP
+\fB\-p, \-\-port\fR (default: \fI12111\fR)
+.RS 4
+Specifies the INET port chkquota should bind to\&.
+.RE
+.PP
+\fB\-P, \-\-pid\fR \fI/run/chkquota\&.pid\fR (default: none)
+.RS 4
+Specifies the path where chkquota should note its PID\&. This setting is mandatory\&.
+.RE
+.PP
+\fB\-n, \-\-helohostname\fR \fIhostname\fR (default: \fIsystem hostname\fR)
+.RS 4
+Specifies the hostname chkquota should use as HELO name when it connects to a remote SMTP or LMTP server\&. This setting is optional\&.
+.RE
+.PP
+\fB\-s, \-\-server\fR \fIaddress\fR (default: none)
+.RS 4
+Specifies the remote address, either IP address or hostname, chkquota should connect to\&. This setting is mandatory\&.
+.RE
+.PP
+\fB\-r, \-\-remoteport\fR (default: \fI25\fR)
+.RS 4
+Specifies the remote port chkquota should connect to\&. This setting is optional\&.
+.RE
+.PP
+\fB\-t, \-\-tls\fR (default: disabled)
+.RS 4
+Specifies if chkquota should use STARTTLS when it connects to the remote SMTP or LMTP server\&. This setting is optional\&.
+.RE
+.PP
+\fB\-S, \-\-ssl\fR (default: disabled)
+.RS 4
+Specifies if chkquota should use SSL when it connects to the remote SMTP or LMTP server\&. This setting is optional\&.
+.RE
+.PP
+\fB\-l, \-\-lmtp\fR (default: disabled)
+.RS 4
+Specifies if chkquota should use LMTP instead of SMTP when it connects to the remote server\&. This setting is optional\&.
+.RE
+.PP
+\fB\-\-test\fR (default: disabled)
+.RS 4
+If specified chkqouta will test each recipient, but let all messages pass regardless of the mailbox quota state\&. This setting is optional\&.
+.RE
+.PP
+\fB\-d, \-\-debug\fR (default: disabled)
+.RS 4
+If specified chkquota will not run in background\&. It will stay in foreground\&. Useful for debugging\&. This setting is optional\&.
+.RE
+.SH "AUTHORS"
+.sp
+Christian Roessner <c@roessner\&.co> wrote the program\&.
+.sp
+Patrick Ben Koetter <p@sys4\&.de> wrote this man page\&.
+.SH "COPYING"
+.sp
+Copyright (C) 2015 sys4 AG\&. Free use of this software is granted under the terms of the GNU General Public License (GPL)\&.

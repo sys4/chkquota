@@ -1,0 +1,88 @@
+chkquota(1)
+===========
+:doctype: manpage
+:man source: chkquota
+:man version: 0.1
+:man manual: chkquota Manual
+
+
+NAME
+----
+chkquota - RFC 1870 Quota Check Policy Service
+
+
+SYNOPSIS
+--------
+
+*chkquota* '-h'
+
+*chkquota* ['-u'] ['-g'] ['-4 192.168.2.1'] ['-6 ::1'] ['-p 12345'] ['-n client.example.com'] ['-r 587'] ['-t'] ['-S'] ['-l'] ['--test'] ['-d'] '-P /path/to/pid' '-s remoteserver'
+
+
+DESCRIPTION
+-----------
+
+chkquota is a RFC 1870 quota check policy service. Contacted by a Postfix check_policy_service client it will contact a remote SMTP or LMTP server. It will specify the recipient and the current messages size to find out if the server would accept the message for that particular recipient. Depending on the outcome it will tell the check_policy_service client to accept or reject the message.
+  
+
+OPTIONS
+-------
+
+*-h, --help*::
+    Prints out a list of all options.
+
+*-u, --user* 'user' (default: none)::
+    Specifies the user chkquota should run as. This setting is optional.
+
+*-g, --group* 'group' (default: none)::
+    Specifies the group chkquota should run as. This setting is optional.
+
+*-4, --bind4* (default: '127.0.0.1')::
+    Specifies the IPv4 INET socket chkquota should bind to.
+
+*-6, --bind6* (default: none)::
+    Specifies the IPv6 INET socket chkquota should bind to. This setting is optional.
+
+*-p, --port* (default: '12111')::
+    Specifies the INET port chkquota should bind to.
+
+*-P, --pid* '/run/chkquota.pid' (default: none)::
+    Specifies the path where chkquota should note its PID. This setting is mandatory.
+
+*-n, --helohostname* 'hostname' (default: 'system hostname')::
+    Specifies the hostname chkquota should use as HELO name when it connects to a remote SMTP or LMTP server. This setting is optional.
+
+*-s, --server* 'address' (default: none)::
+    Specifies the remote address, either IP address or hostname, chkquota should connect to. This setting is mandatory.
+
+*-r, --remoteport* (default: '25')::
+    Specifies the remote port chkquota should connect to. This setting is optional.
+
+*-t, --tls* (default: disabled)::
+    Specifies if chkquota should use STARTTLS when it connects to the remote SMTP or LMTP server. This setting is optional.
+
+*-S, --ssl* (default: disabled)::
+    Specifies if chkquota should use SSL when it connects to the remote SMTP or LMTP server. This setting is optional.
+
+*-l, --lmtp* (default: disabled)::
+    Specifies if chkquota should use LMTP instead of SMTP when it connects to the remote server. This setting is optional.
+
+*--test* (default: disabled)::
+    If specified chkqouta will test each recipient, but let all messages pass regardless of the mailbox quota state. This setting is optional.
+
+*-d, --debug* (default: disabled)::
+    If specified chkquota will not run in background. It will stay in foreground. Useful for debugging. This setting is optional.
+
+
+AUTHORS
+-------
+Christian Roessner <c@roessner.co> wrote the program.
+
+Patrick Ben Koetter <p@sys4.de> wrote this man page.
+
+
+COPYING
+-------
+Copyright \(C) 2015 sys4 AG. Free use of this software is granted under the terms of the GNU General Public License (GPL).
+
+// vim: set ft=asciidoc:

@@ -1,0 +1,445 @@
+#!/usr/bin/env python
+
+'''
+chkquota - a policy delegation server for postifx
+Copyright (C) 2014  [*] sys4 AG
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+__version__ = '1.1'
+__author__ = "Christian Roessner <cr@sys4.de>"
+
+import os
+import sys
+import pwd
+import grp
+import asyncore
+import socket
+import syslog
+import pprint
+import smtplib
+
+from getopt import getopt
+
+
+def usage(hint=""):
+    if hint != "":
+        print hint
+    print """%s [options]
+
+-h, --help                              Prints out this help
+-u, --user=user
+-g, --group=group
+-4, --bind4=127.0.0.1                   (default)
+-6, --bind6=ipv6 address
+-p, --port=12111                        (default)
+-P, --pid=pidfile
+
+-n, --helohostname=%s
+-s, --server=mailserver
+-r, --remoteport=25                     (default)
+-t, --tls
+-S, --ssl
+-l, --lmtp
+
+-c, --code=552                          (default)
+-m, --msg="Mailbox is full"             (default)
+
+    --test                              Run in test mode
+
+-d, --debug                             Run in foreground
+    """ % (os.path.basename(__file__), socket.gethostname())
+
+
+class Cfg(object):
+    '''
+    Static class that reads the configuration and initializes all
+    internal parameters.
+    '''
+
+    global dbgmode
+
+    user = None
+    group = None
+    bind_address = None
+    bind_address6 = None
+    port = 12111
+
+    helohname = socket.gethostname()
+    server = None
+    rport = 25
+    tls = False
+    ssl = False
+    lmtp = False
+
+    code = 552
+    msg = "Mailbox is full"
+
+    pidfile = None
+
+    dbgmode = False
+    testmode = False
+
+    # Parse the command line for arguments
+    try:
+        opts = getopt(sys.argv[1:],
+                      "hu:g:4:6:p:P:n:s:r:c:m:tSld",
+                      ["help",
+                       "user=",
+                       "group=",
+                       "bind4=",
+                       "bind6=",
+                       "port=",
+                       "pid=",
+                       "helohostname=",
+                       "server=",
+                       "rport=",
+                       "code=",
+                       "msg=",
+                       "tls",
+                       "ssl",
+                       "lmtp",
+                       "debug",
+                       "test"])[0]
+
+        for opt, optarg in opts:
+            if opt in ("-h", "--help"):
+                usage()
+                sys.exit(os.EX_USAGE)
+            elif opt in ("-u", "--user"):
+                user = str(optarg)
+            elif opt in ("-g", "--group"):
+                group = str(optarg)
+            elif opt in ("-4", "--bind4"):
+                bind_address = str(optarg)
+            elif opt in ("-6", "--bind6"):
+                bind_address6 = str(optarg)
+            elif opt in ("-p", "--port"):
+                port = int(optarg)
+            elif opt in ("-P", "--pid"):
+                pidfile = str(optarg)
+            elif opt in ("-n", "--helohostname"):
+                helohname = str(optarg)
+            elif opt in ("-s", "--server"):
+                server = str(optarg)
+            elif opt in ("-r", "--remoteport"):
+                rport = int(optarg)
+            elif opt in ("-c", "--code"):
+                code = int(optarg)
+            elif opt in ("-m", "--msg"):
+                msg = optarg
+            elif  opt in ("-t", "--tls"):
+                tls = True
+            elif opt in ("-S", "--ssl"):
+                ssl = True
+            elif opt in ("-l", "--lmtp"):
+                lmtp = True
+            elif opt in ("-d", "--debug"):
+                dbgmode = True
+            elif opt == "--test":
+                testmode = True
+            else:
+                usage(hint="Unknown argument %s" % opt)
+                sys.exit(os.EX_USAGE)
+    except Exception, e:
+        print >> sys.stderr, "Syntax error: %s" % e
+        sys.exit(os.EX_USAGE)
+
+    if user is None:
+        user = 'root'
+
+    if group is None:
+        group = 'root'
+
+    if bind_address == '':
+        bind_address = None
+
+    if bind_address6 == '':
+        bind_address6 = None
+
+    if port is None:
+        port = 11111
+
+    if bind_address is None and bind_address6 is None:
+        bind_address = "127.0.0.1"
+    if bind_address and bind_address6:
+        usage(hint="Do not specify --bind4 and --bind6")
+        sys.exit(os.EX_CONFIG)
+
+    if server is None:
+        usage(hint="Missing argument -s, --server")
+        sys.exit(os.EX_CONFIG)
+
+    if (lmtp and tls) or (lmtp and ssl):
+        usage(hint="Do not specify --tls and --ssl together with --lmtp")
+        sys.exit(os.EX_CONFIG)
+    if tls and ssl:
+        usage(hint="Do not specify --tls and --ssl")
+        sys.exit(os.EX_CONFIG)
+
+
+class PolicyDelegationProtocol(object):
+    '''
+    This class implements the policy delegation protocol for Postfix. All data
+    that is read from Postfix is kept in a dictionary.
+    '''
+
+    def __init__(self):
+        self._proto = {}
+        self._reply = "DUNNO"
+
+
+class PolicyServer(asyncore.dispatcher):
+    '''
+    Start a new policy server and listen on a TCP/IP socket for requests
+    '''
+    
+    def __init__(self):
+        asyncore.dispatcher.__init__(self)
+        
+        if Cfg.bind_address is not None:
+            af = socket.AF_INET
+            host = Cfg.bind_address
+        elif Cfg.bind_address6 is not None:
+            af = socket.AF_INET6
+            host = Cfg.bind_address6
+        self.create_socket(af, socket.SOCK_STREAM)
+        self.set_reuse_addr()
+        self.bind((host, Cfg.port))
+        self.listen(5)
+        syslog.syslog("Starting %s on address(%s), port(%s)"
+                      % (os.path.basename(__file__), host, Cfg.port))
+        
+    def handle_accept(self):
+        socket = self.accept()[0]
+        PolicyServerHandler(socket)
+
+    def handle_close(self):
+        self.close()
+
+
+class PolicyServerHandler(PolicyDelegationProtocol,
+                          asyncore.dispatcher_with_send):
+    '''
+    TODO
+    '''
+
+    def __init__(self, socket=None):
+        PolicyDelegationProtocol.__init__(self)
+        asyncore.dispatcher_with_send.__init__(self, sock=socket)
+        self.__recvbuf = ""
+
+        # Flag for the SMTP session check
+        self._abort = False
+                
+    def handle_read(self):
+        self.__recvbuf += self.recv(4096)
+        if dbgmode:
+            print "\nReceived: %d bytes" % len(self.__recvbuf)
+        if len(self.__recvbuf) == 0:
+            if dbgmode:
+                print "Closing channel"
+            self.close()
+
+        if len(self.__recvbuf) >= 2 and self.__recvbuf[-2:] == "\n\n":
+            if dbgmode:
+                print "Processing received data... instance: %s" % str(self)
+
+            lines = self.__recvbuf.split('\n')
+            for param in lines:
+                if param != "":
+                    k = param.split("=")[0]
+                    v = "=".join([i for i in param.split("=")[1:]])
+                    self._proto[k] = v
+
+            if dbgmode and self._proto != {}:
+                pprint.pprint(self._proto)
+                print "--- Start MAIL FROM test ---"
+
+            if self._proto["request"] == "smtpd_access_policy":
+                # If postfix is in stress mode, we quickly return DUNNO
+                if (self._proto.has_key("stress") and
+                    self._proto["stress"] == "yes"):
+                    stress = True
+                else:
+                    stress = False
+
+                if not stress:
+                    # CONNECT
+                    try:
+                        if Cfg.lmtp:
+                            con = smtplib.LMTP(Cfg.server, Cfg.rport)
+                        elif Cfg.ssl:
+                            con = smtplib.SMTPS(Cfg.server, Cfg.rport)
+                        else:
+                            con = smtplib.SMTP(Cfg.server, Cfg.rport)
+                        if dbgmode:
+                            con.set_debuglevel(1)
+                    except:
+                        self._err("CONNECT to %s:%i failed!" 
+                                  % (Cfg.server, Cfg.rport))
+                        con = None
+
+                    # EHLO
+                    if not self._abort:
+                        try:
+                            con.ehlo(Cfg.helohname)
+                        except:
+                            self._err("EHLO %s failed!" % Cfg.helohname)
+
+                    # STARTTLS
+                    if not self._abort:
+                        if Cfg.tls:
+                            if con.has_extn("STARTTLS"):
+                                try:
+                                    con.starttls()
+                                except:
+                                    self._err("STARTTLS failed!")
+                            else:
+                                self._err("No STARTTLS extension!")
+
+                    # EHLO
+                    if not self._abort:
+                        if Cfg.tls:
+                            try:
+                                con.ehlo(Cfg.helohname)
+                            except:
+                                self._err("EHLO %s failed!" % Cfg.helohname)
+
+                    # Check for SIZE value
+                    if not self._abort:
+                        if not self._proto.has_key("size"):
+                            self._err("No SIZE parameter")
+
+                    # MAIL FROM
+                    if not self._abort:
+                        try:
+                            code, msg = con.docmd("MAIL FROM:<%s> SIZE=%s"
+                                                  % (self._proto["sender"],
+                                                     self._proto["size"]))
+                            if Cfg.testmode:
+                                self._reply = "WARN %s" % msg
+                            else:
+                                # 4xx and 5xx
+                                if int(code) >= 400:
+                                    if (int(code) == Cfg.code and
+                                        Cfg.msg in msg):
+                                        self._reply = "REJECT %s" % msg
+                        except:
+                            self._err("MAIL FROM failed!")
+
+                    # QUIT
+                    if con is not None:
+                        try:
+                            con.quit()
+                        except:
+                            self._err("QUIT failed!")
+
+            syslog.syslog("%s: action=%s client=%s"
+                          % (self._proto["queue_id"],
+                             self._reply,
+                             self._proto["client_address"]))
+
+            if dbgmode:
+                print "--- End SMTP test ---"
+                print ("%s: action=%s"
+                       % (self._proto["queue_id"], self._reply))
+    
+            self.out_buffer = "action=%s\n\n" % self._reply
+
+    def _err(self, msg):
+        if self._proto.has_key("queue_id"):
+            syslog.syslog("%s: %s" % (self._proto["queue_id"], msg))
+            if dbgmode:
+                print "%s: %s" % (self._proto["queue_id"], msg)
+        self._abort = True
+
+
+if __name__ == "__main__":
+    syslog.openlog(os.path.basename(__file__), syslog.LOG_PID, syslog.LOG_MAIL)
+
+    try:
+        gid = grp.getgrnam(Cfg.group)[2]
+    except KeyError, e:
+        print >> sys.stderr, ('Group unknown: %s' % e)
+        sys.exit(os.EX_NOUSER)
+    try:
+        uid = pwd.getpwnam(Cfg.user)[2]
+    except KeyError, e:
+        print >> sys.stderr, ('User unknown: %s' % e)
+        sys.exit(os.EX_NOUSER)
+
+    try:
+        os.setgid(gid)
+    except OSError, e:
+        print >> sys.stderr, ('Could not set group: %s' % e)
+        sys.exit(os.EX_NOPERM)
+    try:
+        os.setuid(uid)
+    except OSError, e:
+        print >> sys.stderr, ('Could not set user: %s' % e)
+        sys.exit(os.EX_NOPERM)
+
+    if dbgmode:
+        print ("Switched user to %s(%s), group to %s(%s)"
+               % (Cfg.user, uid, Cfg.group, gid))
+        print "Staying in foreground..."
+    else:
+        try:
+            pid = os.fork()
+        except OSError, e:
+            print >> sys.stderr, ("First fork failed: (%d) %s"
+                                  % (e.errno, e.strerror))
+            sys.exit(os.EX_OSERR)
+        if (pid == 0):
+            os.setsid()
+            try:
+                pid = os.fork()
+            except OSError, e:
+                print >> sys.stderr, ("Second fork failed: (%d) %s"
+                                      % (e.errno, e.strerror))
+                sys.exit(os.EX_OSERR)
+            if (pid == 0):
+                os.chdir("/")
+                os.umask(0)
+            else:
+                os._exit(0)
+        else:
+            os._exit(0)
+    
+        if Cfg.pidfile is not None:
+            try:
+                with open(Cfg.pidfile, "w") as f:
+                    f.write(str(os.getpid()))
+            except IOError, e:
+                print >> sys.stderr, "Cannot create pid file: %s" % e
+    
+        # In daemon mode, we redirect stdin, stdout and stderr to /dev/null   
+        sys.stdin  = file(os.devnull, "r")
+        sys.stdout = file(os.devnull, "w")
+        sys.stderr = file(os.devnull, "w")
+
+    try:
+        s = PolicyServer()
+        asyncore.loop()
+    except KeyboardInterrupt:
+        pass
+    except Exception, e:
+        print >> sys.stderr, ("Something went wrong: (%d) %s"
+                              % (e.errno, e.strerror))
+
+    sys.exit(os.EX_OK)
+
+# vim: ts=4 sw=4 expandtab
