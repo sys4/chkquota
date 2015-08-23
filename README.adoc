@@ -1,0 +1,10 @@
+= chkquota
+
+chkquota is a RFC 1870 quota check policy service. Contacted by a Postfix
+check_policy_service client it will contact a remote SMTP or LMTP server. It
+will specify the recipient and the current messages size to find out if the
+server would accept the message for that particular recipient. Depending on the
+outcome it will tell the check_policy_service client to accept or reject the
+message.
+
+// vim: set ft=asciidoc:
